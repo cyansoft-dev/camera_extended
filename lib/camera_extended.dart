@@ -4,7 +4,7 @@ import 'dart:io';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-// import 'package:flutter_image_compress/flutter_image_compress.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:intl/intl.dart';
 import 'widgets/button_flash.dart';
 import 'widgets/camera_view.dart';
@@ -19,7 +19,8 @@ typedef OnCapture = Function(File? image);
 T? _ambiguate<T>(T? value) => value;
 
 class CameraExtended extends StatefulWidget {
-  const CameraExtended({super.key, this.onCapture, this.quality = 80});
+  const CameraExtended({super.key, this.onCapture, this.quality = 100})
+      : assert(quality > 0 && quality <= 100);
   final int quality;
   final OnCapture? onCapture;
   @override
@@ -255,19 +256,24 @@ class _CameraExtendedState extends State<CameraExtended>
           'IMG_${DateFormat('yyyyMMdd').format(DateTime.now())}_${DateFormat('HHmmss').format(DateTime.now())}.jpg';
       final String outPath = path.join(appDir.path, fileName);
 
-      // File? result = await FlutterImageCompress.compressAndGetFile(
-      //   photo.path,
-      //   outPath,
-      //   quality: widget.quality,
-      //   format: CompressFormat.jpeg,
-      // );
-
       setState(() {
         _imageFile = File(photo.path);
       });
 
-      // _compressedImage = result;
-      widget.onCapture?.call(_imageFile);
+      File? result;
+      if (widget.quality < 100) {
+        result = await FlutterImageCompress.compressAndGetFile(
+          photo.path,
+          outPath,
+          quality: widget.quality,
+          format: CompressFormat.jpeg,
+        );
+      } else {
+        result = _imageFile;
+      }
+
+      _compressedImage = result;
+      widget.onCapture?.call(_compressedImage);
     } on CameraException catch (e) {
       debugPrint('Error occured while taking picture: $e');
     }
@@ -401,7 +407,6 @@ class _CameraExtendedState extends State<CameraExtended>
             ),
             onPressed: () {
               _imageFile!.deleteSync();
-
               setState(() {
                 _imageFile = null;
               });

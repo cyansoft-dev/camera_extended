@@ -13,7 +13,10 @@ class CameraView extends StatelessWidget {
 
     return Transform.scale(
       scale: scale < 1 ? (1 / scale) : scale,
-      child: controller.buildPreview(),
+      child: OverflowBox(
+        alignment: Alignment.center,
+        child: CameraPreview(controller),
+      ),
     );
   }
 }

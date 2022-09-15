@@ -1,13 +1,17 @@
-import 'package:camera/camera.dart';
+import 'package:camera_extended/widgets/rotation_icon.dart';
 import 'package:flutter/material.dart';
 
 typedef OnTap = VoidCallback;
 
-class ButtonRotation extends StatelessWidget {
-  const ButtonRotation({super.key, required this.direction, this.onTap});
-  final CameraLensDirection direction;
+class ButtonRotation extends StatefulWidget {
+  const ButtonRotation({super.key, this.onTap});
   final OnTap? onTap;
 
+  @override
+  State<ButtonRotation> createState() => _ButtonRotationState();
+}
+
+class _ButtonRotationState extends State<ButtonRotation> {
   @override
   Widget build(BuildContext context) {
     return MaterialButton(
@@ -18,10 +22,9 @@ class ButtonRotation extends StatelessWidget {
         width: 1,
         color: Colors.white,
       )),
-      onPressed: onTap,
-      child: RotatedBox(
-        quarterTurns: direction == CameraLensDirection.back ? 2 : 4,
-        child: const Icon(
+      onPressed: widget.onTap,
+      child: const RotateIcon(
+        icon: Icon(
           Icons.cached_rounded,
           size: 28,
           color: Colors.white,

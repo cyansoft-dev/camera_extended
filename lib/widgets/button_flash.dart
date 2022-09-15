@@ -1,4 +1,5 @@
 import 'package:camera/camera.dart';
+import 'package:camera_extended/widgets/rotation_icon.dart';
 import 'package:flutter/material.dart';
 
 typedef OnTap = VoidCallback;
@@ -50,10 +51,12 @@ class _ButtonFlashState extends State<ButtonFlash>
       },
       child: FadeTransition(
         opacity: _animation,
-        child: Icon(
-          flashIcon,
-          size: 28,
-          color: Colors.white,
+        child: RotateIcon(
+          icon: Icon(
+            flashIcon,
+            size: 28,
+            color: Colors.white,
+          ),
         ),
       ),
     );

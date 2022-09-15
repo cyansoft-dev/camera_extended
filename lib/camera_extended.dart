@@ -2,7 +2,10 @@ library camera_extended;
 
 import 'dart:io';
 import 'package:camera/camera.dart';
+import 'package:camera_extended/widgets/image_view.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:intl/intl.dart';
@@ -12,25 +15,26 @@ import 'widgets/pointer_autofocus.dart';
 import 'package:path_provider/path_provider.dart' as path_provider;
 import 'package:path/path.dart' as path;
 import 'package:permission_handler/permission_handler.dart';
+import 'dart:ui' as ui;
 
 import 'widgets/button_rotation.dart';
 
-typedef OnCapture = Function(File? image);
-T? _ambiguate<T>(T? value) => value;
-
 class CameraExtended extends StatefulWidget {
-  const CameraExtended({super.key, this.onCapture, this.quality = 100})
-      : assert(quality > 0 && quality <= 100);
+  const CameraExtended({
+    super.key,
+    this.quality = 100,
+    // this.onCapture,
+  }) : assert(quality > 0 && quality <= 100);
   final int quality;
-  final OnCapture? onCapture;
+  // final OnCapture? onCapture;
   @override
   State<CameraExtended> createState() => _CameraExtendedState();
 }
 
 class _CameraExtendedState extends State<CameraExtended>
     with WidgetsBindingObserver {
+  static final GlobalKey _key = GlobalKey();
   CameraController? _controller;
-
   double _minAvailableExposureOffset = 0.0;
   double _maxAvailableExposureOffset = 0.0;
   double _currentExposureOffset = 0.0;
@@ -50,7 +54,18 @@ class _CameraExtendedState extends State<CameraExtended>
 
   @override
   void initState() {
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual, overlays: []);
+    SystemChrome.setEnabledSystemUIMode(
+      SystemUiMode.manual,
+      overlays: [],
+    );
+    SystemChrome.setSystemUIOverlayStyle(
+      const SystemUiOverlayStyle(statusBarColor: Colors.white),
+    );
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.landscapeLeft,
+    ]);
+
     _ambiguate(WidgetsBinding.instance)?.addObserver(this);
     getAvailableCamera();
     getPermission();
@@ -88,9 +103,9 @@ class _CameraExtendedState extends State<CameraExtended>
               fit: StackFit.expand,
               children: [
                 _imageFile != null
-                    ? Image.file(
-                        _imageFile!,
-                        fit: BoxFit.cover,
+                    ? ImageView(
+                        key: _key,
+                        image: _imageFile!,
                       )
                     : Stack(
                         fit: StackFit.expand,
@@ -147,7 +162,7 @@ class _CameraExtendedState extends State<CameraExtended>
                   left: 0,
                   right: 0,
                   child: Container(
-                    height: 100,
+                    height: 150,
                     width: double.maxFinite,
                     decoration: const BoxDecoration(color: Colors.black45),
                     child: AnimatedSwitcher(
@@ -208,11 +223,7 @@ class _CameraExtendedState extends State<CameraExtended>
       imageFormatGroup: ImageFormatGroup.jpeg,
     );
 
-    _controller = cameraController;
-
     resetCameraValues();
-
-    // Update UI if controller updated
     cameraController.addListener(() {
       if (mounted) setState(() {});
     });
@@ -240,7 +251,9 @@ class _CameraExtendedState extends State<CameraExtended>
     }
 
     if (mounted) {
-      setState(() {});
+      setState(() {
+        _controller = cameraController;
+      });
     }
   }
 
@@ -260,7 +273,7 @@ class _CameraExtendedState extends State<CameraExtended>
         _imageFile = File(photo.path);
       });
 
-      File? result;
+      File? result = _imageFile;
       if (widget.quality < 100) {
         result = await FlutterImageCompress.compressAndGetFile(
           photo.path,
@@ -268,12 +281,10 @@ class _CameraExtendedState extends State<CameraExtended>
           quality: widget.quality,
           format: CompressFormat.jpeg,
         );
-      } else {
-        result = _imageFile;
       }
 
       _compressedImage = result;
-      widget.onCapture?.call(_compressedImage);
+      // widget.onCapture?.call(_compressedImage);
     } on CameraException catch (e) {
       debugPrint('Error occured while taking picture: $e');
     }
@@ -310,19 +321,13 @@ class _CameraExtendedState extends State<CameraExtended>
     x = details.localPosition.dx;
     y = details.localPosition.dy;
 
-    // double fullWidth = MediaQuery.of(context).size.width;
-    // double cameraHeight = fullWidth * _controller!.value.aspectRatio;
-
-    // double xp = x / fullWidth;
-    // double yp = y / cameraHeight;
-
     double xp = x / constraints.maxWidth;
     double yp = y / constraints.maxHeight;
 
     Offset offset = Offset(xp, yp);
 
-    await cameraController.setFocusPoint(offset);
-    // cameraController.setExposurePoint(offset);
+    cameraController.setFocusPoint(offset);
+    cameraController.setExposurePoint(offset);
 
     Future.delayed(const Duration(milliseconds: 1000)).whenComplete(() {
       setState(() {
@@ -381,7 +386,7 @@ class _CameraExtendedState extends State<CameraExtended>
           ),
         ),
         ButtonRotation(
-          direction: _controller!.description.lensDirection,
+          // direction: _controller!.description.lensDirection,
           onTap: () async {
             _isMainCamera = !_isMainCamera;
             await initCamera(_isMainCamera ? cameras[0] : cameras[1]);
@@ -420,11 +425,53 @@ class _CameraExtendedState extends State<CameraExtended>
               Icons.check_rounded,
               size: 26,
             ),
-            onPressed: () {
+            onPressed: () async {
+              // captureImage().then((value) {
+              //   _imageFile!.deleteSync();
+              //   Navigator.pop(context, value);
+              // });
+
               _imageFile!.deleteSync();
-              Navigator.pop(context, _compressedImage!);
+              Navigator.pop(context, _compressedImage);
             }),
       ],
     );
   }
+
+  Future<File> captureImage() async {
+    try {
+      final Directory appDir = await path_provider.getTemporaryDirectory();
+      final fileName =
+          'IMG_${DateFormat('yyyyMMdd').format(DateTime.now())}_${DateFormat('HHmmss').format(DateTime.now())}.png';
+      final String outPath = path.join(appDir.path, fileName);
+      final bytes = await widgetToImage();
+      final resultFile = File(outPath);
+      await resultFile.writeAsBytes(bytes);
+
+      return resultFile;
+    } catch (e) {
+      debugPrint("Error capture image : $e");
+      rethrow;
+    }
+  }
+
+  Future<Uint8List> widgetToImage() async {
+    try {
+      final boundary =
+          _key.currentContext?.findRenderObject() as RenderRepaintBoundary;
+      ui.Image image = await boundary.toImage(pixelRatio: 3.0);
+      ByteData? byteData =
+          await image.toByteData(format: ui.ImageByteFormat.png);
+      Uint8List pngBytes = byteData!.buffer.asUint8List();
+
+      return pngBytes;
+    } catch (e) {
+      debugPrint("Error capture widget : $e");
+      rethrow;
+    }
+  }
 }
+
+typedef OnCapture = Function(File? image);
+
+T? _ambiguate<T>(T? value) => value;

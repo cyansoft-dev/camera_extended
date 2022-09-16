@@ -39,7 +39,7 @@ class _ButtonFlashState extends State<ButtonFlash>
   Widget build(BuildContext context) {
     return MaterialButton(
       elevation: 0,
-      height: 40,
+      height: 45,
       shape: const CircleBorder(
           side: BorderSide(
         width: 1,

@@ -17,6 +17,12 @@ import 'dart:ui' as ui;
 
 import 'button_rotation.dart';
 
+typedef OnCapture = Function(File? image);
+
+typedef ErrorBuilder = Widget Function(BuildContext context);
+
+T? _ambiguate<T>(T? value) => value;
+
 class CameraView extends StatefulWidget {
   const CameraView({
     super.key,
@@ -47,7 +53,7 @@ class _CameraViewState extends State<CameraView> with WidgetsBindingObserver {
   File? _compressedImage;
   FlashMode? _currentFlashMode;
   bool _isMainCamera = true;
-  bool _isGranted = false;
+  bool? _isGranted;
 
   int elapsed = 0;
   double x = 0;
@@ -99,114 +105,7 @@ class _CameraViewState extends State<CameraView> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: !_isGranted
-          ? notGranted(context)
-          : _controller != null && _controller!.value.isInitialized
-              ? Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    _imageFile != null
-                        ? ImageView(
-                            key: _key,
-                            image: _imageFile!,
-                          )
-                        : Stack(
-                            fit: StackFit.expand,
-                            children: [
-                              CameraWidget(controller: _controller!),
-                              LayoutBuilder(builder: (context, constraints) {
-                                return GestureDetector(
-                                  behavior: HitTestBehavior.opaque,
-                                  onTapDown: (details) =>
-                                      onViewFinderTap(details, constraints),
-                                  onScaleStart: (details) {
-                                    _baseZoomLevel = _currentZoomLevel;
-                                  },
-                                  onScaleUpdate: onScaleUpdate,
-                                );
-                              }),
-                              if (_showFocusCircle)
-                                Positioned(
-                                    top: y - 25,
-                                    left: x - 25,
-                                    child: PointerAutoFocus(
-                                        focusMode:
-                                            _controller!.value.focusMode)),
-                              if (_currentZoomLevel > 1.0)
-                                Positioned(
-                                  top: 35,
-                                  left: 0,
-                                  right: 0,
-                                  child: Center(
-                                    child: AnimatedSwitcher(
-                                      duration:
-                                          const Duration(milliseconds: 500),
-                                      child: Container(
-                                        width: 50,
-                                        decoration: BoxDecoration(
-                                          color: Colors.black45,
-                                          borderRadius:
-                                              BorderRadius.circular(10),
-                                        ),
-                                        child: Padding(
-                                          padding: const EdgeInsets.all(5),
-                                          child: Text(
-                                            '${_currentZoomLevel.toStringAsFixed(1)}x',
-                                            textAlign: TextAlign.center,
-                                            style: const TextStyle(
-                                                color: Colors.white),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          ),
-                    Positioned(
-                      bottom: 0,
-                      left: 0,
-                      right: 0,
-                      child: Container(
-                        height: 150,
-                        width: double.maxFinite,
-                        decoration: const BoxDecoration(color: Colors.black45),
-                        child: AnimatedSwitcher(
-                            duration: const Duration(milliseconds: 300),
-                            switchOutCurve: Curves.easeOut,
-                            switchInCurve: Curves.easeIn,
-                            transitionBuilder: (widget, animation) {
-                              final inAnimation = Tween<Offset>(
-                                      begin: const Offset(0.0, 1.0),
-                                      end: const Offset(0.0, 0.0))
-                                  .animate(animation);
-                              final outAnimation = Tween<Offset>(
-                                      begin: const Offset(0.0, 1.0),
-                                      end: const Offset(0.0, 0.0))
-                                  .animate(animation);
-
-                              if (widget.key == ValueKey(elapsed)) {
-                                return SlideTransition(
-                                  position: inAnimation,
-                                  child: widget,
-                                );
-                              } else {
-                                return SlideTransition(
-                                  position: outAnimation,
-                                  child: widget,
-                                );
-                              }
-                            },
-                            child: _imageFile == null
-                                ? captureButton
-                                : actionButtons),
-                      ),
-                    )
-                  ],
-                )
-              : Container(),
-    );
+    return Scaffold(body: bodyView(context));
   }
 
   void resetCameraValues() async {
@@ -351,6 +250,119 @@ class _CameraViewState extends State<CameraView> with WidgetsBindingObserver {
     });
   }
 
+  Widget bodyView(BuildContext context) {
+    if (_isGranted == null ||
+        _controller == null ||
+        _controller!.value.isInitialized == false) {
+      return const SizedBox.expand();
+    }
+
+    if (_isGranted == false) {
+      return notGranted(context);
+    }
+
+    return camera;
+  }
+
+  Widget get camera {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        _imageFile != null
+            ? ImageView(
+                key: _key,
+                image: _imageFile!,
+              )
+            : Stack(
+                fit: StackFit.expand,
+                children: [
+                  CameraWidget(controller: _controller!),
+                  LayoutBuilder(builder: (context, constraints) {
+                    return GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTapDown: (details) =>
+                          onViewFinderTap(details, constraints),
+                      onScaleStart: (details) {
+                        _baseZoomLevel = _currentZoomLevel;
+                      },
+                      onScaleUpdate: onScaleUpdate,
+                    );
+                  }),
+                  if (_showFocusCircle)
+                    Positioned(
+                        top: y - 25,
+                        left: x - 25,
+                        child: PointerAutoFocus(
+                            focusMode: _controller!.value.focusMode)),
+                  if (_currentZoomLevel > 1.0)
+                    Positioned(
+                      top: 35,
+                      left: 0,
+                      right: 0,
+                      child: Center(
+                        child: AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 500),
+                          child: Container(
+                            width: 50,
+                            decoration: BoxDecoration(
+                              color: Colors.black45,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.all(5),
+                              child: Text(
+                                '${_currentZoomLevel.toStringAsFixed(1)}x',
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(color: Colors.white),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+        Positioned(
+          bottom: 0,
+          left: 0,
+          right: 0,
+          child: Container(
+            height: 150,
+            width: double.maxFinite,
+            decoration: const BoxDecoration(color: Colors.black45),
+            child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 300),
+                switchOutCurve: Curves.easeOut,
+                switchInCurve: Curves.easeIn,
+                transitionBuilder: (widget, animation) {
+                  final inAnimation = Tween<Offset>(
+                          begin: const Offset(0.0, 1.0),
+                          end: const Offset(0.0, 0.0))
+                      .animate(animation);
+                  final outAnimation = Tween<Offset>(
+                          begin: const Offset(0.0, 1.0),
+                          end: const Offset(0.0, 0.0))
+                      .animate(animation);
+
+                  if (widget.key == ValueKey(elapsed)) {
+                    return SlideTransition(
+                      position: inAnimation,
+                      child: widget,
+                    );
+                  } else {
+                    return SlideTransition(
+                      position: outAnimation,
+                      child: widget,
+                    );
+                  }
+                },
+                child: _imageFile == null ? captureButton : actionButtons),
+          ),
+        )
+      ],
+    );
+  }
+
   Widget get captureButton {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -394,7 +406,7 @@ class _CameraViewState extends State<CameraView> with WidgetsBindingObserver {
               )),
           child: MaterialButton(
             elevation: 0,
-            height: 45,
+            height: 50,
             color: Colors.white,
             shape: const CircleBorder(),
             onPressed: () => takePicture(),
@@ -426,7 +438,7 @@ class _CameraViewState extends State<CameraView> with WidgetsBindingObserver {
       children: [
         MaterialButton(
             elevation: 0,
-            height: 40,
+            height: 45,
             color: Colors.white,
             shape: const CircleBorder(),
             child: const Icon(
@@ -441,7 +453,7 @@ class _CameraViewState extends State<CameraView> with WidgetsBindingObserver {
             }),
         MaterialButton(
             elevation: 0,
-            height: 40,
+            height: 45,
             color: Colors.white,
             shape: const CircleBorder(),
             child: const Icon(
@@ -495,9 +507,3 @@ class _CameraViewState extends State<CameraView> with WidgetsBindingObserver {
     }
   }
 }
-
-typedef OnCapture = Function(File? image);
-
-typedef ErrorBuilder = Widget Function(BuildContext context);
-
-T? _ambiguate<T>(T? value) => value;

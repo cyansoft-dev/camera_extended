@@ -1,12 +1,11 @@
 import 'package:camera/camera.dart';
-import 'package:camera_extended/widgets/rotation_icon.dart';
 import 'package:flutter/material.dart';
 
 typedef OnTap = VoidCallback;
 
 class ButtonFlash extends StatefulWidget {
-  const ButtonFlash({super.key, required this.flashMode, this.onTap});
-  final FlashMode flashMode;
+  const ButtonFlash({super.key, this.controller, this.onTap});
+  final CameraController? controller;
   final OnTap? onTap;
 
   @override
@@ -15,29 +14,31 @@ class ButtonFlash extends StatefulWidget {
 
 class _ButtonFlashState extends State<ButtonFlash>
     with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
+  late AnimationController _animationController;
   late Animation<double> _animation;
 
   @override
   void initState() {
-    _controller = AnimationController(
+    _animationController = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 300))
       ..forward();
 
-    _animation = CurvedAnimation(parent: _controller, curve: Curves.easeIn);
+    _animation =
+        CurvedAnimation(parent: _animationController, curve: Curves.easeIn);
 
     super.initState();
   }
 
   @override
   void dispose() {
-    _controller.dispose();
+    _animationController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return MaterialButton(
+      color: Colors.black54,
       elevation: 0,
       height: 45,
       shape: const CircleBorder(
@@ -46,35 +47,33 @@ class _ButtonFlashState extends State<ButtonFlash>
         color: Colors.white,
       )),
       onPressed: () {
-        _controller.forward();
+        _animationController.forward();
         widget.onTap?.call();
       },
       child: FadeTransition(
         opacity: _animation,
-        child: RotateIcon(
-          icon: Icon(
-            flashIcon,
-            size: 28,
-            color: Colors.white,
-          ),
+        child: Icon(
+          flashIcon,
+          size: 28,
+          color: Colors.white,
         ),
       ),
     );
   }
 
   IconData get flashIcon {
-    switch (widget.flashMode) {
-      case FlashMode.off:
-        return Icons.flash_off_rounded;
-
+    switch (widget.controller?.value.flashMode) {
       case FlashMode.auto:
         return Icons.flash_auto_rounded;
 
       case FlashMode.always:
         return Icons.flash_on_rounded;
 
-      default:
+      case FlashMode.torch:
         return Icons.flashlight_on_sharp;
+
+      default:
+        return Icons.flash_off_rounded;
     }
   }
 }

@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 
 class PointerAutoFocus extends StatelessWidget {
   const PointerAutoFocus({super.key, required this.focusMode});
-
   final FocusMode focusMode;
 
   @override

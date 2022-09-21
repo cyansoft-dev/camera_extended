@@ -1,18 +1,23 @@
 library camera_extended;
 
-import 'package:camera_extended/widgets/camera_view.dart';
+import 'package:camera_extended/controller/permission_controller.dart';
 import 'package:flutter/material.dart';
+
+import 'page/switch_page.dart';
+
+typedef OnErrorBuilder = Widget Function(
+    BuildContext context, PermissionController controller);
 
 class CameraExtended extends StatelessWidget {
   const CameraExtended(
       {super.key,
       this.onCapture,
-      this.onErrorBuilder,
       this.child,
+      this.onErrorBuilder,
       this.quality = 100});
   final int quality;
   final OnCapture? onCapture;
-  final ErrorBuilder? onErrorBuilder;
+  final OnErrorBuilder? onErrorBuilder;
   final Widget? child;
 
   @override
@@ -22,10 +27,10 @@ class CameraExtended extends StatelessWidget {
         await Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => CameraView(
+              builder: (context) => SwitchPage(
                 quality: quality,
                 onCapture: onCapture,
-                onErrorBuilder: onErrorBuilder,
+                errorBuilder: onErrorBuilder,
               ),
             ));
       },

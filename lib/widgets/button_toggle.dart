@@ -1,31 +1,29 @@
-import 'package:camera_extended/widgets/rotation_icon.dart';
 import 'package:flutter/material.dart';
 
 typedef OnTap = VoidCallback;
 
-class ButtonRotation extends StatefulWidget {
-  const ButtonRotation({super.key, this.onTap});
+class ToogleButton extends StatelessWidget {
+  const ToogleButton({super.key, this.onTap, this.isToogle = false});
+  final bool isToogle;
   final OnTap? onTap;
 
-  @override
-  State<ButtonRotation> createState() => _ButtonRotationState();
-}
-
-class _ButtonRotationState extends State<ButtonRotation> {
   @override
   Widget build(BuildContext context) {
     return MaterialButton(
       elevation: 0,
       height: 45,
+      color: Colors.black54,
       shape: const CircleBorder(
           side: BorderSide(
         width: 1,
         color: Colors.white,
       )),
-      onPressed: widget.onTap,
-      child: const RotateIcon(
-        icon: Icon(
-          Icons.cached_rounded,
+      onPressed: onTap,
+      child: AnimatedRotation(
+        turns: isToogle ? 0.5 : 0.0,
+        duration: const Duration(milliseconds: 400),
+        child: const Icon(
+          Icons.cached_outlined,
           size: 28,
           color: Colors.white,
         ),

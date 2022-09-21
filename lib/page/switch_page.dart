@@ -16,10 +16,12 @@ class SwitchPage extends StatefulWidget {
   const SwitchPage({
     super.key,
     this.quality = 100,
+    this.enableAudio,
     this.onCapture,
     this.errorBuilder,
   });
   final int quality;
+  final bool? enableAudio;
   final OnCapture? onCapture;
   final OnErrorBuilder? errorBuilder;
 
@@ -46,34 +48,38 @@ class _SwitchPageState extends State<SwitchPage> {
   @override
   Widget build(BuildContext context) {
     return ValueListenableBuilder(
-        valueListenable: _controller,
-        builder: (context, status, child) {
-          if (status == null) {
+      valueListenable: _controller,
+      builder: (context, status, child) {
+        if (status == null) {
+          return Scaffold(
+            body: Container(),
+          );
+        }
+
+        if (!status) {
+          if (widget.errorBuilder == null) {
+            return ErrorPage(
+              controller: _controller,
+            );
+          } else {
             return Scaffold(
-              body: Container(),
+              body: widget.errorBuilder!(context, _controller),
             );
           }
+        }
 
-          if (!status) {
-            if (widget.errorBuilder == null) {
-              return ErrorPage(
-                controller: _controller,
-              );
-            } else {
-              return Scaffold(body: widget.errorBuilder!(context, _controller));
+        return CameraPage(
+          quality: widget.quality,
+          enableAudio: widget.enableAudio,
+          onCapture: (image) async {
+            if (image != null) {
+              final compress = await compressImage(image);
+              widget.onCapture?.call(compress);
             }
-          }
-
-          return CameraPage(
-            quality: widget.quality,
-            onCapture: (image) async {
-              if (image != null) {
-                final compress = await compressImage(image);
-                widget.onCapture?.call(compress);
-              }
-            },
-          );
-        });
+          },
+        );
+      },
+    );
   }
 
   Future<void> checkPermission() async {
@@ -86,25 +92,31 @@ class _SwitchPageState extends State<SwitchPage> {
   }
 
   Future<File?> compressImage(File originFile) async {
-    final tempDir = await path_provider.getTemporaryDirectory();
-    final String dirPath = '${tempDir.path}/media';
-    await Directory(dirPath).create(recursive: true);
-    final String filePath = '$dirPath/${_timestamp()}.jpeg';
+    String timestamp() => DateTime.now().millisecondsSinceEpoch.toString();
 
-    File? imageCompress;
-    if (widget.quality < 100) {
-      imageCompress = await FlutterImageCompress.compressAndGetFile(
-        originFile.path,
-        filePath,
-        quality: widget.quality,
-        format: CompressFormat.jpeg,
-      );
-    } else {
-      imageCompress = originFile;
+    try {
+      final tempDir = await path_provider.getTemporaryDirectory();
+      final String dirPath = '${tempDir.path}/media';
+      await Directory(dirPath).create(recursive: true);
+      final String filePath = '$dirPath/${timestamp()}.jpeg';
+
+      File? imageCompress;
+      if (widget.quality < 100) {
+        imageCompress = await FlutterImageCompress.compressAndGetFile(
+          originFile.path,
+          filePath,
+          quality: widget.quality,
+          format: CompressFormat.jpeg,
+        );
+
+        originFile.deleteSync(recursive: true);
+      } else {
+        imageCompress = originFile;
+      }
+      return imageCompress;
+    } catch (e) {
+      debugPrint("Error capture image : $e");
+      rethrow;
     }
-
-    return imageCompress;
   }
-
-  String _timestamp() => DateTime.now().millisecondsSinceEpoch.toString();
 }

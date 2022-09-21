@@ -6,8 +6,6 @@ import 'package:camera_extended/page/switch_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
-import 'package:intl/intl.dart';
-import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart' as path_provider;
 
 import '../widgets/button_flash.dart';
@@ -22,9 +20,12 @@ class CameraPage extends StatefulWidget {
     super.key,
     required this.quality,
     this.onCapture,
+    this.enableAudio,
   }) : assert(quality > 0 && quality <= 100);
   final int quality;
   final OnCapture? onCapture;
+  final bool? enableAudio;
+
   @override
   State<CameraPage> createState() => _CameraPageState();
 }
@@ -97,54 +98,50 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
   Widget build(BuildContext context) {
     return Scaffold(
         backgroundColor: Colors.black,
-        body: !_isInisialized
-            ? Container()
-            : Stack(
-                fit: StackFit.expand,
-                children: [
-                  cameraView(),
-                  Positioned(
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
-                    child: SizedBox(
-                      height: 175,
-                      width: double.maxFinite,
-                      // decoration: const BoxDecoration(color: Colors.black45),
-                      child: AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 300),
-                        switchOutCurve: Curves.easeOut,
-                        switchInCurve: Curves.easeIn,
-                        transitionBuilder: (widget, animation) {
-                          final inAnimation = Tween<Offset>(
-                                  begin: const Offset(0.0, 1.0),
-                                  end: const Offset(0.0, 0.0))
-                              .animate(animation);
-                          final outAnimation = Tween<Offset>(
-                                  begin: const Offset(0.0, 1.0),
-                                  end: const Offset(0.0, 0.0))
-                              .animate(animation);
+        body: Stack(
+          fit: StackFit.expand,
+          children: [
+            cameraView(),
+            Positioned(
+              bottom: 0,
+              left: 0,
+              right: 0,
+              child: SizedBox(
+                height: 175,
+                width: double.maxFinite,
+                // decoration: const BoxDecoration(color: Colors.black45),
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 300),
+                  switchOutCurve: Curves.easeOut,
+                  switchInCurve: Curves.easeIn,
+                  transitionBuilder: (widget, animation) {
+                    final inAnimation = Tween<Offset>(
+                            begin: const Offset(0.0, 1.0),
+                            end: const Offset(0.0, 0.0))
+                        .animate(animation);
+                    final outAnimation = Tween<Offset>(
+                            begin: const Offset(0.0, 1.0),
+                            end: const Offset(0.0, 0.0))
+                        .animate(animation);
 
-                          if (widget.key == ValueKey(elapsed)) {
-                            return SlideTransition(
-                              position: inAnimation,
-                              child: widget,
-                            );
-                          } else {
-                            return SlideTransition(
-                              position: outAnimation,
-                              child: widget,
-                            );
-                          }
-                        },
-                        child: _imageFile == null
-                            ? captureButton()
-                            : actionButtons(),
-                      ),
-                    ),
-                  ),
-                ],
-              ));
+                    if (widget.key == ValueKey(elapsed)) {
+                      return SlideTransition(
+                        position: inAnimation,
+                        child: widget,
+                      );
+                    } else {
+                      return SlideTransition(
+                        position: outAnimation,
+                        child: widget,
+                      );
+                    }
+                  },
+                  child: _imageFile == null ? captureButton() : actionButtons(),
+                ),
+              ),
+            ),
+          ],
+        ));
   }
 
   void resetCameraValues() async {
@@ -168,6 +165,7 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
       description,
       ResolutionPreset.max,
       imageFormatGroup: ImageFormatGroup.jpeg,
+      enableAudio: widget.enableAudio ?? true,
     );
 
     resetCameraValues();
@@ -206,6 +204,14 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
 
   bool get _isInisialized {
     return (_controller != null && _controller!.value.isInitialized);
+  }
+
+  double get scale {
+    if (_controller != null) {
+      return (1 / _controller!.value.aspectRatio);
+    }
+
+    return 1;
   }
 
   Future<void> takePicture() async {
@@ -262,61 +268,62 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
   }
 
   Widget cameraView() {
-    return _imageFile != null
-        ? ImageView(
-            key: _key,
-            image: _imageFile!,
-            controller: _controller!,
-          )
-        : Stack(
-            fit: StackFit.expand,
-            children: [
-              AspectRatio(
-                aspectRatio: 1 / _controller!.value.aspectRatio,
-                child: _controller!.buildPreview(),
-              ),
-              GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTapDown: (details) => onViewFinderTap(details),
-                onScaleStart: (details) {
-                  _baseZoomLevel = _currentZoomLevel;
-                },
-                onScaleUpdate: onScaleUpdate,
-              ),
-              if (_showFocusCircle)
-                Positioned(
-                    top: y - 25,
-                    left: x - 25,
-                    child: PointerAutoFocus(
-                        focusMode: _controller!.value.focusMode)),
-              if (_currentZoomLevel > 1.0)
-                Positioned(
-                  top: 35,
-                  left: 0,
-                  right: 0,
-                  child: Center(
-                    child: AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 500),
-                      child: Container(
-                        width: 50,
-                        decoration: BoxDecoration(
-                          color: Colors.black45,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.all(5),
-                          child: Text(
-                            '${_currentZoomLevel.toStringAsFixed(1)}x',
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(color: Colors.white),
-                          ),
-                        ),
-                      ),
+    if (!_isInisialized) {
+      return Container();
+    }
+
+    if (_imageFile != null) {
+      return ImageView(
+        key: _key,
+        image: _imageFile!,
+      );
+    }
+
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        CameraPreview(_controller!),
+        GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTapDown: (details) => onViewFinderTap(details),
+          onScaleStart: (details) {
+            _baseZoomLevel = _currentZoomLevel;
+          },
+          onScaleUpdate: onScaleUpdate,
+        ),
+        if (_showFocusCircle)
+          Positioned(
+              top: y - 25,
+              left: x - 25,
+              child: PointerAutoFocus(focusMode: _controller!.value.focusMode)),
+        if (_currentZoomLevel > 1.0)
+          Positioned(
+            top: 35,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 500),
+                child: Container(
+                  width: 50,
+                  decoration: BoxDecoration(
+                    color: Colors.black45,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(5),
+                    child: Text(
+                      '${_currentZoomLevel.toStringAsFixed(1)}x',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: Colors.white),
                     ),
                   ),
                 ),
-            ],
-          );
+              ),
+            ),
+          ),
+      ],
+    );
   }
 
   Widget captureButton() {
@@ -406,9 +413,10 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
               size: 26,
             ),
             onPressed: () {
-              _imageFile!.deleteSync(recursive: true);
-              setState(() {
-                _imageFile = null;
+              _imageFile!.delete(recursive: true).then((_) {
+                setState(() {
+                  _imageFile = null;
+                });
               });
             }),
         MaterialButton(
@@ -429,14 +437,15 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
   }
 
   Future<File> captureImage() async {
+    String timestamp() => DateTime.now().millisecondsSinceEpoch.toString();
+
     try {
-      final Directory appDir =
-          await path_provider.getApplicationDocumentsDirectory();
-      final fileName =
-          'IMG_${DateFormat('yyyyMMdd').format(DateTime.now())}_${DateFormat('HHmmss').format(DateTime.now())}.png';
-      final String outPath = path.join(appDir.path, fileName);
+      final tempDir = await path_provider.getTemporaryDirectory();
+      final String dirPath = '${tempDir.path}/media';
+      await Directory(dirPath).create(recursive: true);
+      final String filePath = '$dirPath/${timestamp()}_compressed.png';
       final bytes = await widgetToImage();
-      final resultFile = File(outPath);
+      final resultFile = File(filePath);
       await resultFile.writeAsBytes(bytes);
 
       return resultFile;

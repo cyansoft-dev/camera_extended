@@ -35,7 +35,6 @@ CameraExtended(
       quality: 80,
       onCapture: (image) {
         debugPrint(image!.path);
-        widget.controller?.file = image;
       },
       child: Container(),
  );
@@ -47,7 +46,6 @@ CameraExtended(
       quality: 80,
       onCapture: (image) {
         debugPrint(image!.path);
-        widget.controller?.file = image;
       },
       onErrorBuilder: (context, controller) {
         return Center(

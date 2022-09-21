@@ -1,8 +1,6 @@
 # camera_extended
 
-A Flutter package base from camera plugin.
-
-## Getting Started
+A Flutter package base from plugin [camera](https://pub.dev/packages/camera) & [flutter_image_compress](https://pub.dev/packages/flutter_image_compress) for compressing image.
 
 ## Getting Started
 

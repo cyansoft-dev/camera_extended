@@ -1,39 +1,116 @@
-<!--
-This README describes the package. If you publish this package to pub.dev,
-this README's contents appear on the landing page for your package.
+# camera_extended
 
-For information about how to write a good package README, see the guide for
-[writing package pages](https://dart.dev/guides/libraries/writing-package-pages).
+A Flutter package base from camera plugin.
 
-For general information about developing packages, see the Dart guide for
-[creating packages](https://dart.dev/guides/libraries/create-library-packages)
-and the Flutter guide for
-[developing packages and plugins](https://flutter.dev/developing-packages).
--->
+## Getting Started
 
-TODO: Put a short description of the package here that helps potential users
-know whether this package might be useful for them.
+## Getting Started
 
-## Features
+In your flutter project add the dependency in your pubspec.yaml:
+```yml
+dependencies:
+...
+camera_extended:
+    git:
+      url: https://github.com/cyansoft-dev/camera_extended.git
+      ref: master
+```
 
-TODO: List what your package can do. Maybe include images, gifs, or videos.
+## Feature
+- [x] Add control the flash.
+- [x] Add feature pitching for zoom in out.
+- [x] Add change camera.
+- [x] Can add custom widget for handling error permission.
+- [x] Can setting quality of image for resize image file.
+- [ ] Add video record feature.
 
-## Getting started
-
-TODO: List prerequisites and provide or point to information on how to
-start using the package.
 
 ## Usage
 
-TODO: Include short and useful examples for package users. Add longer examples
-to `/example` folder.
-
-```dart
-const like = 'sample';
+### importing package
+```
+import 'package:camera_extended/camera_extended.dart';
+```
+### Example
+```
+CameraExtended(
+      quality: 80,
+      onCapture: (image) {
+        debugPrint(image!.path);
+        widget.controller?.file = image;
+      },
+      child: Container(),
+ );
 ```
 
-## Additional information
+### Example with custom widget for handling error permission
+```
+CameraExtended(
+      quality: 80,
+      onCapture: (image) {
+        debugPrint(image!.path);
+        widget.controller?.file = image;
+      },
+      onErrorBuilder: (context, controller) {
+        return Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              const Text(
+                "Camera permission denied \nPlease give permission.",
+                textAlign: TextAlign.center,
+              ),
+              SizedBox(height: 15),
+              MaterialButton(
+                color: Colors.blue,
+                onPressed: () async {
+                  // add this for request permission
+                  await controller.requestPermission();
+                },
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.verified_user_rounded,
+                      color: Colors.white,
+                    ),
+                    SizedBox(width: 5),
+                    const Text(
+                      "Give Permission",
+                      style: TextStyle(
+                          color: Colors.white, fontWeight: FontWeight.w700),
+                    ),
+                  ],
+                ),
+              )
+            ],
+          ),
+        );
+      },
+    }, 
+    child: Container(),
+ );
+```
 
-TODO: Tell users more about the package: where to find more information, how to
-contribute to the package, how to file issues, what response they can expect
-from the package authors, and more.
+## Android Integration
+
+Add the following to AndroidManifest.xml:
+```
+<uses-permission android:name="android.permission.CAMERA"/>
+```
+
+In app/build.grade set minimum SDK version
+```
+minSdkVersion 21
+```
+
+## IOS Integration
+
+Add the following to info.plist:
+```
+<key>NSCameraUsageDescription</key>
+<string>This app needs access camera when open</string>
+<key>NSMicrophoneUsageDescription</key>
+<string>This app needs access microphone when open</string>
+```
